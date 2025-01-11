@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encrypt Business Data</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Encrypt Business Data</h1>
+        <p>Capture your photo and encrypt business data for a specific website.</p>
+
+        <div id="video-container">
+            <video id="video" width="640" height="480" autoplay></video>
+            <canvas id="photo-canvas" width="640" height="480" style="display: none;"></canvas>
+        </div>
+        <button id="capture-photo">Capture Photo</button>
+
+        <input id="website" type="text" placeholder="Enter website identifier">
+        <textarea id="data" rows="5" placeholder="Enter data to encrypt"></textarea>
+        <button id="encrypt">Encrypt Data</button>
+
+        <p id="result"></p>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const photoCanvas = document.getElementById('photo-canvas');
+        const captureButton = document.getElementById('capture-photo');
+        const encryptButton = document.getElementById('encrypt');
+        const resultText = document.getElementById('result');
+        const websiteInput = document.getElementById('website');
+        const dataInput = document.getElementById('data');
+
+        // Access the user's camera
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Camera access denied:", err);
+                resultText.textContent = "Error: Unable to access the camera.";
+            });
+
+        // Capture photo and replace video with the image
+        captureButton.addEventListener('click', () => {
+            const context = photoCanvas.getContext('2d');
+            context.drawImage(video, 0, 0, photoCanvas.width, photoCanvas.height);
+
+            // Stop the camera feed
+            const stream = video.srcObject;
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+
+            // Hide the video feed and display the captured image
+            video.style.display = "none";
+            photoCanvas.style.display = "block";
+        });
+
+        // Submit form data along with the captured photo
+        encryptButton.addEventListener('click', async () => {
+            const website = websiteInput.value;
+            const data = dataInput.value;
+
+            if (!website || !data) {
+                resultText.textContent = "Please fill out all fields.";
+                return;
+            }
+
+            photoCanvas.toBlob(async blob => {
+                const formData = new FormData();
+                formData.append('website', website);
+                formData.append('data', data);
+                formData.append('photo', blob);
+
+                try {
+                    const response = await fetch('/encrypt-external-data', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    const result = await response.json();
+                    if (result.error) {
+                        resultText.textContent = `Error: ${result.error}`;
+                    } else {
+                        resultText.textContent = `Encrypted Data: ${result.encrypted_data}`;
+                    }
+                } catch (error) {
+                    resultText.textContent = `Error: ${error.message}`;
+                }
+            });
+        });
+    </script>
+</body>
+</html>

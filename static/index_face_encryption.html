@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Encryption System</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Face Encryption System</h1>
+        <p>Capture your photo and generate encryption keys using facial recognition technology.</p>
+
+        <div id="video-container">
+            <video id="video" width="640" height="480" autoplay></video>
+            <canvas id="face-outline" width="640" height="480" style="position: absolute; top: 0; left: 0;"></canvas>
+        </div>
+        <button id="capture">Capture Photo</button>
+        <canvas id="canvas" width="640" height="480" style="display: none;"></canvas>
+
+        <input id="website" type="text" placeholder="Enter website">
+        <input id="password" type="text" placeholder="Enter password">
+        <button id="process">Generate Key and Encrypt</button>
+
+        <p id="result"></p>
+    </div>
+
+    <script src="/static/outline.js"></script>
+    <script>
+        const video = document.getElementById('video');
+        const faceOutlineCanvas = document.getElementById('face-outline');
+        const captureButton = document.getElementById('capture');
+        const processButton = document.getElementById('process');
+        const resultText = document.getElementById('result');
+        const websiteInput = document.getElementById('website');
+        const passwordInput = document.getElementById('password');
+        const canvas = document.getElementById('canvas');
+
+        // Draw the face and shoulder outline
+        drawFaceAndShoulderOutline(faceOutlineCanvas);
+
+        // Access the user's camera
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => console.error("Camera access denied:", err));
+
+        // Capture photo and replace video with the captured image
+        captureButton.addEventListener('click', () => {
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Stop the camera feed
+            const stream = video.srcObject;
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+
+            // Hide the video feed and display the captured image
+            video.style.display = "none";
+            canvas.style.display = "block";
+        });
+
+        // Process the captured photo
+        processButton.addEventListener('click', async () => {
+            const website = websiteInput.value;
+            const password = passwordInput.value;
+
+            if (!website || !password) {
+                resultText.textContent = "Please enter both website and password.";
+                return;
+            }
+
+            canvas.toBlob(async (blob) => {
+                if (!blob) {
+                    resultText.textContent = "Failed to capture photo. Try again.";
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('image', blob);
+                formData.append('website', website);
+                formData.append('password', password);
+
+                console.log([...formData.entries()]); // Log form data to ensure all fields are included
+
+                try {
+                    const response = await fetch('/process', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    const result = await response.json();
+                    if (result.error) {
+                        resultText.textContent = `Error: ${result.error}`;
+                    } else {
+                        resultText.textContent = `Encryption Key: ${result.encryption_key}\n\nEncrypted Password: ${result.encrypted_password}`;
+                    }
+                } catch (error) {
+                    console.error("Error during fetch:", error);
+                    resultText.textContent = `Error: ${error.message}`;
+                }
+            });
+        });
+
+    </script>
+</body>
+</html>
