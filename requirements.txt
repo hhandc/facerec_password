@@ -1,7 +1,7 @@
-fastapi 
-uvicorn 
-face_recognition 
-numpy 
-cryptography 
-python-multipart 
-opencv-python
+dlib==19.24.0
+face_recognition
+numpy
+fastapi
+uvicorn
+cryptography
+pillow
